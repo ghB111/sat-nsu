@@ -5,21 +5,38 @@ use parser::*;
 use solver::*;
 
 use log::debug;
-use std::env;
 use std::fs;
+use std::path::PathBuf;
+use structopt::StructOpt;
+use strum::VariantNames;
 
+#[derive(Debug, strum::EnumString, strum::VariantNames)]
+#[strum(serialize_all = "kebab-case")]
 enum SolverMethod {
     Recursion,
-    NoRecursion
+    NoRecursion,
+}
+
+#[derive(Debug, StructOpt)]
+#[structopt(name = "args", about = "Args to the sat solver")]
+struct Args {
+    /// Input file
+    #[structopt(parse(from_os_str))]
+    input: PathBuf,
+
+    /// Method to use when solving
+    #[structopt(short, long, default_value="recursion", possible_values = SolverMethod::VARIANTS)]
+    method: SolverMethod,
 }
 
 fn main() {
     env_logger::init();
 
-    let args: Vec<String> = env::args().collect();
+    let args = Args::from_args();
+    debug!("Args: {:?}", args);
 
-    let input_path = args.get(1).expect("Expected a path to input cnf file");
-    debug!("Running sat for input path {input_path}");
+    let input_path = args.input;
+    debug!("Running sat for input path {:?}", input_path);
 
     let cnf_contents = fs::read_to_string(input_path).expect("Error reading file");
 
@@ -41,8 +58,10 @@ fn main() {
         .collect::<Vec<&str>>();
     let problem_body = get_problem_body(&problem, clauses_str);
 
-    // let result = solve_with_recursion(&problem, &problem_body);
-    let result = solve_no_recursion(&problem, &problem_body);
+    let result = match args.method {
+        SolverMethod::Recursion => solve_with_recursion(&problem, &problem_body),
+        SolverMethod::NoRecursion => solve_no_recursion(&problem, &problem_body),
+    };
     print_result(&result);
 }
 

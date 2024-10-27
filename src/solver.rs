@@ -1,4 +1,5 @@
 use log::debug;
+use log::trace;
 
 #[derive(Debug)]
 pub struct Problem {
@@ -36,7 +37,7 @@ pub fn solve_no_recursion(problem: &Problem, body: &ProblemBody) -> Solution {
     let vec_size = problem.variables_count;
     proposal.resize(vec_size as usize, false);
     loop {
-        debug!("Proposal: {:?}", proposal);
+        trace!("Proposal: {:?}", proposal);
 
         if is_solution(&body, &proposal) {
             return Solution::Satisfiable { values: proposal };
@@ -46,7 +47,7 @@ pub fn solve_no_recursion(problem: &Problem, body: &ProblemBody) -> Solution {
         if !has_next {
             break;
         }
-    };
+    }
     return Solution::Unsatisfiable;
 }
 
@@ -56,7 +57,7 @@ fn set_next_proposal(proposal: &mut Vec<bool>) -> std::result::Result<(), ()> {
     if proposal.is_empty() {
         return Err(());
     }
-    
+
     let mut maybe_first_zero_idx: Option<usize> = None;
     for (idx, el) in proposal.iter().enumerate() {
         if *el == false {
@@ -74,7 +75,7 @@ fn set_next_proposal(proposal: &mut Vec<bool>) -> std::result::Result<(), ()> {
     proposal[first_zero_idx] = true;
     for idx in 0..first_zero_idx {
         proposal[idx] = false;
-    };
+    }
     Ok(())
 }
 
