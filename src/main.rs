@@ -8,6 +8,11 @@ use log::debug;
 use std::env;
 use std::fs;
 
+enum SolverMethod {
+    Recursion,
+    NoRecursion
+}
+
 fn main() {
     env_logger::init();
 
@@ -36,16 +41,17 @@ fn main() {
         .collect::<Vec<&str>>();
     let problem_body = get_problem_body(&problem, clauses_str);
 
-    let result = solve(&problem, &problem_body);
+    // let result = solve_with_recursion(&problem, &problem_body);
+    let result = solve_no_recursion(&problem, &problem_body);
     print_result(&result);
 }
 
-fn print_result(result: &Result) {
+fn print_result(result: &Solution) {
     match result {
-        Result::Unsatisfiable => {
+        Solution::Unsatisfiable => {
             println!("UNSATISFIABLE")
         }
-        Result::Satisfiable { values } => {
+        Solution::Satisfiable { values } => {
             println!("SATISFIABLE");
             print!("v ");
             for (idx, value) in values.iter().enumerate() {
