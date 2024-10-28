@@ -29,7 +29,7 @@ struct Args {
     method: SolverMethod,
 }
 
-fn main() {
+fn main() -> Result<(), ()> {
     env_logger::init();
 
     let args = Args::from_args();
@@ -42,36 +42,32 @@ fn main() {
 
     debug!("Length of cnf file: {}", cnf_contents.len());
 
-    let mut lines = cnf_contents.lines();
-    let problem_line = lines
-        .position(|x| x.starts_with("p "))
-        .expect("File should contain a line starting with 'p ...'");
+    let problem = match parse_cnf(&cnf_contents) {
+        Ok(problem) => problem,
+        Err(parse_error) => {
+            println!("Error while parsing cnf: {:?}", parse_error);
+            return Err(());
+        }
+    };
 
-    // todo not elegant to split several times
-    let problem_str = cnf_contents.lines().skip(problem_line).next().unwrap();
-
-    let problem = get_problem_description(problem_str);
-
-    let clauses_str = cnf_contents
-        .lines()
-        .skip(problem_line + 1)
-        .collect::<Vec<&str>>();
-    let problem_body = get_problem_body(&problem, clauses_str);
+    debug!("Parsed problem: {:?}", problem);
 
     let result = match args.method {
-        SolverMethod::Recursion => solve_with_recursion(&problem, &problem_body),
-        SolverMethod::NoRecursion => solve_no_recursion(&problem, &problem_body),
+        SolverMethod::Recursion => solve_with_recursion(&problem),
+        SolverMethod::NoRecursion => solve_no_recursion(&problem),
     };
+
     print_result(&result);
+    Ok(())
 }
 
 fn print_result(result: &Solution) {
     match result {
         Solution::Unsatisfiable => {
-            println!("UNSATISFIABLE")
+            println!("s UNSATISFIABLE")
         }
         Solution::Satisfiable { values } => {
-            println!("SATISFIABLE");
+            println!("s SATISFIABLE");
             print!("v ");
             for (idx, value) in values.iter().enumerate() {
                 let print_idx = idx + 1;

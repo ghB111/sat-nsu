@@ -1,49 +1,29 @@
 use log::debug;
 use log::trace;
 
-#[derive(Debug)]
-pub struct Problem {
-    pub clauses_count: u64,
-    pub variables_count: u64,
-}
+use crate::parser::*;
 
-pub struct ProblemBody {
-    pub clauses: Vec<Clause>,
-}
-
-#[derive(Clone)]
-pub struct Literal {
-    pub negated: bool,
-    pub idx: u64,
-}
-
-#[derive(Clone)]
-pub struct Clause {
-    pub var_idxs: Vec<Literal>,
-}
-
-// TODO just use standard Result
 pub enum Solution {
     Satisfiable { values: Vec<bool> },
     Unsatisfiable,
 }
 
-pub fn solve_with_recursion(problem: &Problem, body: &ProblemBody) -> Solution {
-    return solve_rec(problem, body, 0, Vec::new());
+pub fn solve_with_recursion(problem: &Problem) -> Solution {
+    return solve_rec(problem, 0, Vec::new());
 }
 
-pub fn solve_no_recursion(problem: &Problem, body: &ProblemBody) -> Solution {
+pub fn solve_no_recursion(problem: &Problem) -> Solution {
     let mut proposal: Vec<bool> = Vec::new();
     let vec_size = problem.variables_count;
     proposal.resize(vec_size as usize, false);
     loop {
         trace!("Proposal: {:?}", proposal);
 
-        if is_solution(&body, &proposal) {
+        if is_solution(&problem, &proposal) {
             return Solution::Satisfiable { values: proposal };
         }
 
-        let has_next = set_next_proposal(&mut proposal).is_ok();
+        let has_next = increment_proposal(&mut proposal).is_ok();
         if !has_next {
             break;
         }
@@ -51,9 +31,9 @@ pub fn solve_no_recursion(problem: &Problem, body: &ProblemBody) -> Solution {
     return Solution::Unsatisfiable;
 }
 
-// Modifies prosal to be next proposal. Return Ok for success, Err if given
-// proposal was the last possible.
-fn set_next_proposal(proposal: &mut Vec<bool>) -> std::result::Result<(), ()> {
+/// Modifies prosal to be next proposal. Return Ok for success, Err if given
+/// proposal was the last possible.
+fn increment_proposal(proposal: &mut Vec<bool>) -> std::result::Result<(), ()> {
     if proposal.is_empty() {
         return Err(());
     }
@@ -66,7 +46,7 @@ fn set_next_proposal(proposal: &mut Vec<bool>) -> std::result::Result<(), ()> {
         }
     }
 
-    debug!("First false idx: {:?}", maybe_first_zero_idx);
+    trace!("First false idx: {:?}", maybe_first_zero_idx);
     let first_zero_idx = match maybe_first_zero_idx {
         None => return Err(()),
         Some(idx) => idx,
@@ -79,15 +59,10 @@ fn set_next_proposal(proposal: &mut Vec<bool>) -> std::result::Result<(), ()> {
     Ok(())
 }
 
-fn solve_rec(
-    problem: &Problem,
-    body: &ProblemBody,
-    cur_idx: usize,
-    cur_values: Vec<bool>,
-) -> Solution {
+fn solve_rec(problem: &Problem, cur_idx: usize, cur_values: Vec<bool>) -> Solution {
     assert_eq!(cur_idx, cur_values.len());
     if problem.variables_count as usize == cur_idx {
-        if is_solution(body, &cur_values) {
+        if is_solution(problem, &cur_values) {
             return Solution::Satisfiable { values: cur_values };
         }
         return Solution::Unsatisfiable;
@@ -95,7 +70,7 @@ fn solve_rec(
 
     let mut next_true = cur_values.clone();
     next_true.push(true);
-    let next_true_solution = solve_rec(problem, body, cur_idx + 1, next_true);
+    let next_true_solution = solve_rec(problem, cur_idx + 1, next_true);
     match &next_true_solution {
         Solution::Satisfiable { .. } => {
             return next_true_solution;
@@ -105,7 +80,7 @@ fn solve_rec(
 
     let mut next_false = cur_values.clone();
     next_false.push(false);
-    let next_false_solution = solve_rec(problem, body, cur_idx + 1, next_false);
+    let next_false_solution = solve_rec(problem, cur_idx + 1, next_false);
     match &next_false_solution {
         Solution::Satisfiable { .. } => {
             return next_false_solution;
@@ -115,8 +90,11 @@ fn solve_rec(
     return Solution::Unsatisfiable;
 }
 
-fn is_solution(body: &ProblemBody, values: &Vec<bool>) -> bool {
-    body.clauses.iter().all(|clause| satisfies(clause, values))
+fn is_solution(problem: &Problem, values: &Vec<bool>) -> bool {
+    problem
+        .clauses
+        .iter()
+        .all(|clause| satisfies(clause, values))
 }
 
 fn satisfies(clause: &Clause, values: &Vec<bool>) -> bool {
